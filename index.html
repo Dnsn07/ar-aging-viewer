@@ -1194,14 +1194,35 @@ async function fetchFromDrive(url) {
   } catch(e) {
     hideLoading();
     const msg = e.message.includes('Failed to fetch')
-      ? 'Tidak bisa terhubung. Pastikan URL benar dan Apps Script sudah di-deploy dengan akses "Anyone".'
-      : 'Gagal: ' + e.message;
-    setDriveStatus(msg, 'error');
-    showToast('Gagal: ' + e.message);
-    // Fallback ke cache jika ada
+      ? 'Tidak bisa terhubung ke Google Drive. Pastikan Apps Script sudah di-deploy dengan akses "Anyone".'
+      : 'Gagal memuat data: ' + e.message;
+
+    // Coba tampilkan dari cache dulu
     if (loadFromStorage()) {
-      document.getElementById('file-bar-info').textContent += '  · (data cache)';
+      document.getElementById('upload-section').style.display = 'none';
+      document.getElementById('app-content').style.display = 'block';
+      document.getElementById('file-bar-info').textContent += '  ⚠️ (cache — Drive tidak terhubung)';
       switchTab('city', true);
+      showToast('Drive gagal — menampilkan data cache');
+    } else {
+      // Tidak ada cache — tampilkan error tapi JANGAN tampilkan halaman setup
+      document.getElementById('upload-section').style.display = 'none';
+      document.getElementById('app-content').style.display = 'block';
+      document.getElementById('file-bar-icon').textContent = '⚠️';
+      document.getElementById('file-bar-name').textContent = 'Gagal terhubung ke Google Drive';
+      document.getElementById('file-bar-info').textContent = msg;
+      document.getElementById('stats-grid').innerHTML = `
+        <div style="grid-column:1/-1;background:var(--danger-bg);border:1px solid #f7c1c1;border-radius:12px;padding:20px 24px;">
+          <div style="font-size:14px;font-weight:600;color:var(--danger);margin-bottom:8px;">⚠️ Gagal terhubung ke Google Drive</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px;">${msg}</div>
+          <div style="font-size:12px;color:var(--text3);">Kemungkinan penyebab:<br>
+            · Apps Script belum di-deploy atau URL salah<br>
+            · Akses "Who has access" belum di-set ke "Anyone"<br>
+            · Perlu authorize ulang di Apps Script
+          </div>
+          <button onclick="fetchFromDrive(scriptUrl)" style="margin-top:14px;font-family:inherit;font-size:13px;font-weight:500;padding:8px 16px;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer;">↻ Coba Lagi</button>
+        </div>`;
+      document.getElementById('table-body').innerHTML = '';
     }
     return false;
   }
@@ -1229,8 +1250,13 @@ window.addEventListener('load', () => {
     switchTab('city', true);
     return;
   }
-  // Tidak ada URL dan tidak ada cache — tampilkan halaman setup
-  document.getElementById('upload-section').style.display = 'block';
+  // Tidak ada URL hardcoded dan tidak ada cache — tampilkan halaman setup
+  if (!APPS_SCRIPT_URL) {
+    document.getElementById('upload-section').style.display = 'block';
+  } else {
+    // URL ada tapi fetch belum dipanggil (harusnya tidak sampai sini)
+    fetchFromDrive(APPS_SCRIPT_URL);
+  }
 });
 </script>
 </body>
