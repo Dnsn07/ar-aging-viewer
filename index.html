@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AR Aging Viewer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #F4F2EE;
+    --surface: #FFFFFF;
+    --surface2: #F8F7F4;
+    --border: #E4E1D8;
+    --border2: #D0CCBF;
+    --text: #1A1814;
+    --text2: #6B6760;
+    --text3: #A8A49C;
+    --accent: #2D6A4F;
+    --accent-bg: #EAF3EE;
+    --danger: #9B2335;
+    --danger-bg: #FCEEF0;
+    --warning: #7A4F00;
+    --warning-bg: #FFF4E0;
+    --info: #1B4E8A;
+    --info-bg: #EBF2FB;
+    --neutral: #4A4640;
+    --neutral-bg: #F0EEE8;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-icon {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .brand-icon svg { width: 16px; height: 16px; stroke: white; fill: none; stroke-width: 2; }
+  .brand-name { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+  .brand-sub { font-size: 12px; color: var(--text3); margin-left: 8px; }
+  .header-date { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text3); }
+
+  /* MAIN */
+  .main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* UPLOAD ZONE */
+  .upload-zone {
+    background: var(--surface);
+    border: 2px dashed var(--border2);
+    border-radius: 16px;
+    padding: 56px 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 24px;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+  .upload-icon {
+    width: 52px; height: 52px;
+    background: var(--neutral-bg);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .upload-icon svg { width: 24px; height: 24px; stroke: var(--text2); fill: none; stroke-width: 1.5; }
+  .upload-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+  .upload-sub { font-size: 13px; color: var(--text3); }
+  .upload-sub span { color: var(--accent); font-weight: 500; cursor: pointer; }
+  #file-input { display: none; }
+
+  /* FILE INFO BAR */
+  .file-bar {
+    background: var(--accent-bg);
+    border: 1px solid #B7D9C8;
+    border-radius: 10px;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    font-size: 13px;
+  }
+  .file-bar-icon { color: var(--accent); font-size: 16px; }
+  .file-bar-name { font-weight: 500; color: var(--accent); }
+  .file-bar-info { color: var(--text2); }
+  .file-bar-btn {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text2);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .file-bar-btn:hover { background: var(--surface); }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    width: fit-content;
+  }
+  .tab {
+    padding: 7px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--text2);
+    border-radius: 7px;
+    transition: all 0.15s;
+    font-family: inherit;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--text); color: #fff; }
+  .tab-count {
+    background: rgba(255,255,255,0.2);
+    border-radius: 99px;
+    padding: 1px 7px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .tab:not(.active) .tab-count {
+    background: var(--neutral-bg);
+    color: var(--text2);
+  }
+
+  /* STATS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 18px;
+  }
+  .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.6px; font-weight: 500; margin-bottom: 6px; }
+  .stat-value { font-size: 22px; font-weight: 600; color: var(--text); line-height: 1.2; }
+  .stat-value.danger { color: var(--danger); }
+  .stat-value.warning { color: var(--warning); }
+  .stat-value.accent { color: var(--accent); }
+  .stat-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+  /* FILTERS */
+  .filter-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+  .filter-group { display: flex; flex-direction: column; gap: 4px; }
+  .filter-label { font-size: 11px; color: var(--text3); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .filter-group select,
+  .filter-group input[type="date"],
+  .filter-group input[type="text"] {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface2);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .filter-group select:focus,
+  .filter-group input:focus { border-color: var(--accent); }
+  .filter-group input[type="date"] { min-width: 140px; }
+  .filter-group select { min-width: 130px; }
+  .btn-reset {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 7px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: none;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    align-self: flex-end;
+  }
+  .btn-reset:hover { background: var(--neutral-bg); color: var(--text); }
+
+  /* RESULTS INFO */
+  .results-info {
+    font-size: 12px;
+    color: var(--text3);
+    margin-bottom: 10px;
+    padding-left: 2px;
+  }
+  .results-info span { color: var(--text); font-weight: 500; }
+
+  /* TABLE */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 900px;
+  }
+  thead tr { background: var(--surface2); }
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    position: sticky;
+    top: 0;
+    background: var(--surface2);
+  }
+  th:hover { color: var(--text); }
+  th .sort-arrow { opacity: 0.3; margin-left: 4px; }
+  th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
+  td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  /* BADGES */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    line-height: 1.4;
+  }
+  .b-green { background: var(--accent-bg); color: var(--accent); }
+  .b-red { background: var(--danger-bg); color: var(--danger); }
+  .b-orange { background: var(--warning-bg); color: var(--warning); }
+  .b-blue { background: var(--info-bg); color: var(--info); }
+  .b-gray { background: var(--neutral-bg); color: var(--neutral); }
+
+  /* TIMELINE */
+  .timeline { display: flex; flex-direction: column; gap: 3px; min-width: 260px; max-width: 380px; max-height: 160px; overflow-y: auto; padding-right: 4px; }
+  .tl-entry {
+    font-size: 11px;
+    color: var(--text2);
+    padding: 4px 8px;
+    border-left: 2px solid var(--border);
+    border-radius: 0 4px 4px 0;
+    background: var(--surface2);
+    line-height: 1.5;
+  }
+  .tl-entry.latest {
+    border-left-color: var(--accent);
+    background: var(--accent-bg);
+    color: var(--text);
+    font-weight: 500;
+  }
+  .tl-entry.latest::before {
+    content: '● ';
+    color: var(--accent);
+    font-size: 8px;
+  }
+
+  /* EMPTY */
+  .empty-state {
+    text-align: center;
+    padding: 64px 32px;
+    color: var(--text3);
+  }
+  .empty-state-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state-title { font-size: 16px; font-weight: 600; color: var(--text2); margin-bottom: 6px; }
+  .empty-state-sub { font-size: 13px; }
+
+  /* UPLOAD STATE */
+  #app-content { display: none; }
+  #upload-section { display: block; }
+
+  /* AMOUNT */
+  .amount { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text); }
+
+  /* SORT */
+  .no-data { text-align: center; padding: 40px; color: var(--text3); font-size: 13px; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--text); color: white;
+    padding: 12px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 500;
+    box-shadow: var(--shadow-md);
+    z-index: 999;
+    transform: translateY(20px); opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* LOADING */
+  .loading-bar {
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
+    position: fixed; top: 0; left: 0; right: 0;
+    z-index: 200;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s;
+  }
+
+  @media (max-width: 768px) {
+    .main { padding: 16px; }
+    .header { padding: 0 16px; }
+    .brand-sub { display: none; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-bar" id="loading-bar"></div>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+    </div>
+    <span class="brand-name">AR Aging Viewer</span>
+    <span class="brand-sub">Accounts Receivable Dashboard</span>
+  </div>
+  <div class="header-date" id="header-date"></div>
+</header>
+
+<main class="main">
+
+  <!-- UPLOAD SECTION -->
+  <div id="upload-section">
+    <div class="upload-zone" id="upload-zone">
+      <div class="upload-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="upload-title">Upload File Aging AR</div>
+      <div class="upload-sub">Drag & drop file di sini, atau <span onclick="document.getElementById('file-input').click()">pilih file</span></div>
+      <div class="upload-sub" style="margin-top:8px; font-size:12px;">Format: .xlsx — Sheet: SUM, CITY LEDGER, OWNER LEDGER</div>
+      <input type="file" id="file-input" accept=".xlsx,.xlsm,.xls">
+    </div>
+
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin-top:8px;">
+      <div style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;">Cara Penggunaan</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="width:24px;height:24px;background:var(--accent-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:var(--accent);">1</div>
+          <div><div style="font-size:13px;font-weight:500;">Upload file Excel</div><div style="font-size:12px;color:var(--text3);">Format Aging AR (.xlsx) seperti biasa</div></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="width:24px;height:24px;background:var(--accent-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:var(--accent);">2</div>
+          <div><div style="font-size:13px;font-weight:500;">Filter data</div><div style="font-size:12px;color:var(--text3);">Filter by unit, tanggal follow up, aging, status</div></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <div style="width:24px;height:24px;background:var(--accent-bg);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;color:var(--accent);">3</div>
+          <div><div style="font-size:13px;font-weight:500;">Baca timeline</div><div style="font-size:12px;color:var(--text3);">Follow up terakhir di-highlight otomatis</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- APP CONTENT -->
+  <div id="app-content">
+
+    <!-- FILE BAR -->
+    <div class="file-bar" id="file-bar">
+      <span class="file-bar-icon">📄</span>
+      <span class="file-bar-name" id="file-bar-name"></span>
+      <span class="file-bar-info" id="file-bar-info"></span>
+      <button class="file-bar-btn" onclick="resetApp()">Ganti File</button>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab active" id="tab-city" onclick="switchTab('city')">
+        City Ledger <span class="tab-count" id="count-city">0</span>
+      </button>
+      <button class="tab" id="tab-owner" onclick="switchTab('owner')">
+        Owner Ledger <span class="tab-count" id="count-owner">0</span>
+      </button>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats-grid" id="stats-grid"></div>
+
+    <!-- FILTERS -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label class="filter-label">Unit</label>
+        <select id="f-unit" onchange="applyFilters()"><option value="">Semua Unit</option></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Aging</label>
+        <select id="f-aging" onchange="applyFilters()">
+          <option value="">Semua Aging</option>
+          <option value="0-30">&lt; 30 Hari</option>
+          <option value="31-60">31–60 Hari</option>
+          <option value="61-90">61–90 Hari</option>
+          <option value="90+"> &gt; 90 Hari</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Last Follow Up — Dari</label>
+        <input type="date" id="f-date-from" onchange="applyFilters()">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Last Follow Up — Sampai</label>
+        <input type="date" id="f-date-to" onchange="applyFilters()">
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Status</label>
+        <select id="f-status" onchange="applyFilters()"><option value="">Semua Status</option></select>
+      </div>
+      <div class="filter-group">
+        <label class="filter-label">Cari Perusahaan</label>
+        <input type="text" id="f-search" placeholder="Nama perusahaan..." oninput="applyFilters()" style="min-width:160px;">
+      </div>
+      <button class="btn-reset" onclick="clearFilters()">↺ Reset</button>
+    </div>
+
+    <div class="results-info" id="results-info"></div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="sortBy('no')" style="width:42px">No <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('unit')" style="width:65px">Unit <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('company')" style="width:160px">Perusahaan <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('sales')" style="width:70px">Sales <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('guest')" style="width:110px">Guest/PIC <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('balance')" style="width:120px">Balance <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('billDate')" style="width:90px">Bill Date <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('aging')" style="width:80px">Aging <span class="sort-arrow">↕</span></th>
+            <th onclick="sortBy('lastFollowUpDate')" style="width:90px">Last F/U <span class="sort-arrow">↕</span></th>
+            <th style="width:95px">Status</th>
+            <th style="width:140px">No Invoice</th>
+            <th>Timeline Follow Up</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let allData = { city: [], owner: [] };
+let currentTab = 'city';
+let sortField = 'no';
+let sortDir = 1;
+
+// ─── DATE ────────────────────────────────────────────────────────────────────
+document.getElementById('header-date').textContent = new Date().toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+// ─── UPLOAD ──────────────────────────────────────────────────────────────────
+const zone = document.getElementById('upload-zone');
+const fileInput = document.getElementById('file-input');
+
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+zone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', e => handleFile(e.target.files[0]));
+
+function showLoading() {
+  const bar = document.getElementById('loading-bar');
+  bar.style.transform = 'scaleX(0.7)';
+}
+function hideLoading() {
+  const bar = document.getElementById('loading-bar');
+  bar.style.transform = 'scaleX(1)';
+  setTimeout(() => bar.style.transform = 'scaleX(0)', 300);
+}
+
+function handleFile(file) {
+  if (!file) return;
+  if (!file.name.match(/\.(xlsx|xlsm|xls)$/i)) { showToast('Format file tidak didukung. Gunakan .xlsx'); return; }
+  showLoading();
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      parseWorkbook(wb, file.name);
+      hideLoading();
+    } catch(err) {
+      hideLoading();
+      showToast('Gagal membaca file: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseWorkbook(wb, filename) {
+  const citySheet = findSheet(wb, ['CITY LEDGER', 'CITY', 'CITY_LEDGER']);
+  const ownerSheet = findSheet(wb, ['OWNER LEDGER', 'OWNER', 'OWNER_LEDGER']);
+  if (!citySheet && !ownerSheet) { showToast('Sheet CITY LEDGER atau OWNER LEDGER tidak ditemukan'); return; }
+  allData.city = citySheet ? parseSheet(wb.Sheets[citySheet]) : [];
+  allData.owner = ownerSheet ? parseSheet(wb.Sheets[ownerSheet]) : [];
+  document.getElementById('count-city').textContent = allData.city.length;
+  document.getElementById('count-owner').textContent = allData.owner.length;
+  document.getElementById('upload-section').style.display = 'none';
+  document.getElementById('app-content').style.display = 'block';
+  document.getElementById('file-bar-name').textContent = filename;
+  document.getElementById('file-bar-info').textContent = `— ${allData.city.length} City Ledger, ${allData.owner.length} Owner Ledger`;
+  switchTab('city', true);
+  showToast(`Berhasil memuat ${allData.city.length + allData.owner.length} data`);
+}
+
+function findSheet(wb, names) {
+  for (const n of names) {
+    const found = wb.SheetNames.find(s => s.toUpperCase().replace(/\s+/g,'_') === n.replace(/\s+/g,'_'));
+    if (found) return found;
+  }
+  return null;
+}
+
+function parseSheet(ws) {
+  // Use raw:true to get actual values (numbers for dates), then read date cells directly
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+
+  // find header row
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(10, rows.length); i++) {
+    const row = rows[i];
+    if (row.some(c => String(c).toLowerCase().trim() === 'no') && row.some(c => String(c).toLowerCase().trim() === 'unit')) {
+      headerIdx = i; break;
+    }
+  }
+  if (headerIdx === -1) return [];
+
+  const headers = rows[headerIdx].map(h => String(h).toLowerCase().trim());
+  const colNo       = headers.findIndex(h => h === 'no');
+  const colUnit     = headers.findIndex(h => h === 'unit');
+  const colBillArt  = headers.findIndex(h => h === 'bill art');
+  const colCompany  = headers.findIndex(h => h.includes('company'));
+  const colGuest    = headers.findIndex(h => h.includes('guest'));
+  const colSales    = headers.findIndex(h => h === 'sales');
+  const colBillDate = headers.findIndex(h => h === 'bill date');
+  const colBalance  = headers.findIndex(h => h === 'balance');
+  const colInvDate  = headers.findIndex(h => h === 'invoice date');
+  const colNoInv    = headers.findIndex(h => h.includes('no invoice') || h === 'no inv');
+  const colStatus   = headers.findIndex(h => h.includes('status'));
+  const colFollowUp = headers.findIndex(h => h.includes('follow') || h.includes('last'));
+
+  // Get column letters for direct cell access (to read date cells properly)
+  const colLetter = idx => {
+    if (idx < 0) return null;
+    return String.fromCharCode(65 + idx); // A=0, B=1, etc. (works up to Z)
+  };
+
+  const results = [];
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+
+    const noRaw = colNo >= 0 ? row[colNo] : '';
+    const noVal = Number(noRaw);
+    if (!noRaw || isNaN(noVal) || noVal <= 0) continue;
+
+    // Read balance — raw number
+    const balance = colBalance >= 0 ? (parseFloat(row[colBalance]) || 0) : 0;
+
+    // Read dates directly from worksheet cells (they come as Excel serial numbers when raw:true)
+    const excelRow = headerIdx + 1 + i; // actual Excel row number (1-based) = header row + offset
+    const actualRow = i + 1; // sheet_to_json rows are 0-based, Excel rows are 1-based
+    const billDate  = readDateCell(ws, colBillDate, actualRow);
+    const invDate   = readDateCell(ws, colInvDate, actualRow);
+
+    const followUpText = colFollowUp >= 0 ? String(row[colFollowUp]).trim() : '';
+    const lastFUDate = extractLastDate(followUpText);
+    const entries = splitFollowUpEntries(followUpText);
+
+    results.push({
+      no: noVal,
+      unit:    colUnit    >= 0 ? String(row[colUnit]).trim() : '',
+      art:     colBillArt >= 0 ? String(row[colBillArt]).trim() : '',
+      company: colCompany >= 0 ? String(row[colCompany]).trim() : '',
+      guest:   colGuest   >= 0 ? String(row[colGuest]).trim() : '',
+      sales:   colSales   >= 0 ? String(row[colSales]).trim() : '',
+      billDate,
+      balance,
+      invoiceDate: invDate,
+      noInv:   colNoInv   >= 0 ? String(row[colNoInv]).trim() : '',
+      status:  colStatus  >= 0 ? String(row[colStatus]).trim() : '',
+      followUp: followUpText,
+      lastFollowUpDate: lastFUDate,
+      entries,
+      aging: billDate ? Math.floor((new Date() - billDate) / 86400000) : null,
+    });
+  }
+  return results;
+}
+
+// Read a date cell directly from worksheet — handles Excel serial date numbers
+function readDateCell(ws, colIdx, rowIdx) {
+  if (colIdx < 0) return null;
+  // Build cell address: column letter + row number (both 0-indexed col, 1-indexed row in xlsx)
+  // rowIdx here = 0-based row index in sheet_to_json array, Excel row = rowIdx + 1
+  const colLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const colStr = colIdx < 26 ? colLetters[colIdx] : colLetters[Math.floor(colIdx/26)-1] + colLetters[colIdx%26];
+  const cellAddr = colStr + (rowIdx + 1); // +1 because Excel rows are 1-based
+  const cell = ws[cellAddr];
+  if (!cell) return null;
+  // If SheetJS already parsed it as a Date
+  if (cell.v instanceof Date) return isNaN(cell.v) ? null : cell.v;
+  // Excel serial number (e.g. 46096 = 2026-03-07)
+  if (typeof cell.v === 'number' && cell.v > 20000) {
+    const d = XLSX.SSF.parse_date_code(cell.v);
+    if (d) return new Date(d.y, d.m - 1, d.d);
+  }
+  // Formatted string fallback
+  const s = String(cell.w || cell.v || '').trim();
+  return parseDateStr(s);
+}
+
+function parseDateStr(s) {
+  if (!s) return null;
+  // yyyy-mm-dd
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) { const d = new Date(s); return isNaN(d) ? null : d; }
+  // dd/mm/yyyy or dd/mm/yy
+  const m1 = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (m1) {
+    let [,d,mo,y] = m1; if (y.length===2) y='20'+y;
+    const dt = new Date(+y,+mo-1,+d); return isNaN(dt)?null:dt;
+  }
+  // d-mmm-yy like 18-Sep-25
+  const m2 = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2,4})/);
+  if (m2) {
+    const months={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    let [,d,mo,y] = m2; if (y.length===2) y='20'+y;
+    const dt = new Date(+y, months[mo.toLowerCase()]??0, +d); return isNaN(dt)?null:dt;
+  }
+  return null;
+}
+
+function extractLastDate(text) {
+  if (!text) return null;
+  const dates = [];
+  let m;
+  // Today as local midnight — used as upper bound so future typos are ignored
+  const today = new Date(); 
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1); // +1 to include today
+
+  // dd/mm/yyyy or dd/mm/yy  e.g. 19/09/2025 or 20/04/26
+  const re1 = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/g;
+  while ((m = re1.exec(text)) !== null) {
+    let [,d,mo,y] = m;
+    if (y.length === 2) y = '20' + y;
+    if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31) continue;
+    const dt = new Date(+y, +mo-1, +d);
+    if (!isNaN(dt) && dt.getFullYear() >= 2020 && dt < todayMidnight) dates.push(dt);
+  }
+  // DDMMYY standalone — e.g. 080426 = 08/04/2026
+  const re2 = /(?<!\d)([0-3]\d)([01]\d)(\d{2})(?!\d)/g;
+  while ((m = re2.exec(text)) !== null) {
+    let [,d,mo,y] = m;
+    if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31) continue;
+    const dt = new Date(2000 + +y, +mo-1, +d);
+    if (!isNaN(dt) && dt.getFullYear() >= 2020 && dt < todayMidnight) dates.push(dt);
+  }
+  if (!dates.length) return null;
+  return dates.reduce((a,b) => a > b ? a : b);
+}
+
+function splitFollowUpEntries(text) {
+  if (!text) return [];
+  // Find all date-start positions (dd/mm/yy or DDMMYY), then slice between them
+  const DATE_RE = /(?<!\d)(\d{1,2}\/\d{1,2}\/\d{2,4}[:\s]|[0-3]\d[01]\d\d{2}\s)/g;
+  const positions = [];
+  let m;
+  while ((m = DATE_RE.exec(text)) !== null) positions.push(m.index);
+  if (!positions.length) return [text.trim()].filter(p => p.length > 4);
+  return positions.map((pos, i) => {
+    const end = i + 1 < positions.length ? positions[i + 1] : text.length;
+    return text.slice(pos, end).replace(/^[\s,;.]+/, '').replace(/[,\s.]+$/, '').trim();
+  }).filter(p => p.length > 4);
+}
+
+// ─── FILTERS ─────────────────────────────────────────────────────────────────
+function populateFilterOptions() {
+  const data = allData[currentTab];
+  const units = [...new Set(data.map(r=>r.unit).filter(Boolean))].sort();
+  const statuses = [...new Set(data.map(r=>r.status).filter(Boolean))].sort();
+  const unitSel = document.getElementById('f-unit');
+  const statusSel = document.getElementById('f-status');
+  const curUnit = unitSel.value;
+  const curStatus = statusSel.value;
+  unitSel.innerHTML = '<option value="">Semua Unit</option>' + units.map(u=>`<option${u===curUnit?' selected':''}>${u}</option>`).join('');
+  statusSel.innerHTML = '<option value="">Semua Status</option>' + statuses.map(s=>`<option${s===curStatus?' selected':''}>${s}</option>`).join('');
+}
+
+function applyFilters() {
+  const unit = document.getElementById('f-unit').value;
+  const aging = document.getElementById('f-aging').value;
+  const dateFrom = document.getElementById('f-date-from').value;
+  const dateTo = document.getElementById('f-date-to').value;
+  const status = document.getElementById('f-status').value;
+  const search = document.getElementById('f-search').value.toLowerCase().trim();
+
+  let data = [...allData[currentTab]];
+
+  if (unit) data = data.filter(r => r.unit === unit);
+  if (status) data = data.filter(r => r.status === status);
+  if (search) data = data.filter(r => r.company.toLowerCase().includes(search) || r.guest.toLowerCase().includes(search));
+
+  if (aging) {
+    data = data.filter(r => {
+      const d = r.aging;
+      if (d === null) return false;
+      if (aging === '0-30') return d <= 30;
+      if (aging === '31-60') return d > 30 && d <= 60;
+      if (aging === '61-90') return d > 60 && d <= 90;
+      if (aging === '90+') return d > 90;
+      return true;
+    });
+  }
+
+  // Date filter: handled inside renderTable per-entry (no row hiding)
+  // parseLocalDate helper used there too
+  
+
+  // Sort
+  data.sort((a,b) => {
+    let va = a[sortField], vb = b[sortField];
+    if (va === null) va = sortDir === 1 ? Infinity : -Infinity;
+    if (vb === null) vb = sortDir === 1 ? Infinity : -Infinity;
+    if (typeof va === 'string') return sortDir * va.localeCompare(vb);
+    return sortDir * (va - vb);
+  });
+
+  renderStats(data);
+  renderTable(data, dateFrom, dateTo);
+
+  const total = allData[currentTab].length;
+  document.getElementById('results-info').innerHTML = `Menampilkan <span>${data.length}</span> dari <span>${total}</span> data`;
+}
+
+function clearFilters() {
+  document.getElementById('f-unit').value = '';
+  document.getElementById('f-aging').value = '';
+  document.getElementById('f-date-from').value = '';
+  document.getElementById('f-date-to').value = '';
+  document.getElementById('f-status').value = '';
+  document.getElementById('f-search').value = '';
+  applyFilters();
+}
+
+// ─── SORT ─────────────────────────────────────────────────────────────────────
+function sortBy(field) {
+  if (sortField === field) sortDir *= -1;
+  else { sortField = field; sortDir = 1; }
+  document.querySelectorAll('th').forEach(th => th.classList.remove('sorted'));
+  event.currentTarget.classList.add('sorted');
+  event.currentTarget.querySelector('.sort-arrow').textContent = sortDir === 1 ? '↑' : '↓';
+  applyFilters();
+}
+
+// ─── RENDER STATS ─────────────────────────────────────────────────────────────
+function renderStats(data) {
+  const total = data.reduce((s,r)=>s+r.balance,0);
+  const over90 = data.filter(r=>r.aging>90).reduce((s,r)=>s+r.balance,0);
+  const noFU = data.filter(r=>!r.lastFollowUpDate).length;
+  const stale = data.filter(r=>{
+    if (!r.lastFollowUpDate) return true;
+    const days = Math.floor((new Date()-r.lastFollowUpDate)/86400000);
+    return days > 14;
+  }).length;
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-label">Total Piutang</div>
+      <div class="stat-value accent">${fmtIDR(total)}</div>
+      <div class="stat-sub">${data.length} invoice</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Overdue &gt;90 Hari</div>
+      <div class="stat-value danger">${fmtIDR(over90)}</div>
+      <div class="stat-sub">${data.filter(r=>r.aging>90).length} invoice</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Tanpa Follow Up Jelas</div>
+      <div class="stat-value warning">${noFU}</div>
+      <div class="stat-sub">invoice</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">F/U &gt;14 Hari Lalu</div>
+      <div class="stat-value warning">${stale}</div>
+      <div class="stat-sub">perlu follow up ulang</div>
+    </div>
+  `;
+}
+
+// ─── RENDER TABLE ─────────────────────────────────────────────────────────────
+function parseLocalDate(s) {
+  if (!s) return null;
+  const [y,mo,d] = s.split('-').map(Number);
+  return new Date(y, mo-1, d);
+}
+
+// Extract the first date from an entry string, return as Date or null
+function entryDate(entryText) {
+  // dd/mm/yy or dd/mm/yyyy
+  let m = entryText.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (m) {
+    let [,d,mo,y] = m;
+    if (y.length === 2) y = '20' + y;
+    const dt = new Date(+y, +mo-1, +d);
+    return isNaN(dt) ? null : dt;
+  }
+  // DDMMYY at start e.g. 080426
+  m = entryText.match(/^([0-3]\d)([01]\d)(\d{2})/);
+  if (m) {
+    let [,d,mo,y] = m;
+    if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31) return null;
+    const dt = new Date(2000 + +y, +mo-1, +d);
+    return isNaN(dt) ? null : dt;
+  }
+  return null;
+}
+
+function renderTable(data, dateFrom, dateTo) {
+  const fromDate = parseLocalDate(dateFrom);
+  const toDate   = parseLocalDate(dateTo);
+
+  const tbody = document.getElementById('table-body');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="11" class="no-data">Tidak ada data yang cocok dengan filter yang dipilih</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.map((r,i) => {
+    const agingBadge = getAgingBadge(r.aging);
+
+    // Filter entries by date range if set
+    let visibleEntries = r.entries;
+    if (fromDate || toDate) {
+      visibleEntries = r.entries.filter(e => {
+        const ed = entryDate(e);
+        if (!ed) return false; // entry has no recognizable date — hide when filter active
+        const edDay = new Date(ed.getFullYear(), ed.getMonth(), ed.getDate());
+        if (fromDate && edDay < fromDate) return false;
+        if (toDate   && edDay > toDate)   return false;
+        return true;
+      });
+    }
+
+    const timelineContent = visibleEntries.length
+      ? visibleEntries.map((e, idx) => {
+          const isLatest = idx === visibleEntries.length - 1;
+          return `<div class="tl-entry${isLatest ? ' latest' : ''}">${normalizeDatesInText(e)}</div>`;
+        }).join('')
+      : `<span style="color:var(--text3);font-size:11px">${(fromDate||toDate) ? 'Tidak ada follow up di rentang ini' : 'Tidak ada catatan'}</span>`;
+
+    const timeline = `<div class="timeline">${timelineContent}</div>`;
+    const lastFU = r.lastFollowUpDate
+      ? `<span style="font-weight:500">${fmtDate(r.lastFollowUpDate)}</span>`
+      : `<span style="color:var(--text3)">—</span>`;
+    const statusBadge = r.status
+      ? `<span class="badge b-green" style="font-size:10px">${r.status}</span>`
+      : `<span class="badge b-gray" style="font-size:10px">—</span>`;
+    return `<tr>
+      <td style="color:var(--text3);font-size:12px">${i+1}</td>
+      <td><span class="badge b-blue">${r.unit||'—'}</span></td>
+      <td>
+        <div style="font-weight:500;font-size:13px">${r.company||'—'}</div>
+      </td>
+      <td style="font-size:12px;color:var(--text2)">${r.sales && r.sales !== '-' ? r.sales : '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="font-size:12px;color:var(--text2)">${r.guest && r.guest !== '-' && r.guest.trim() ? r.guest : '<span style="color:var(--text3)">—</span>'}</td>
+      <td><span class="amount">${fmtIDR(r.balance)}</span></td>
+      <td style="font-size:12px;color:var(--text2)">${r.billDate ? fmtDate(r.billDate) : '<span style="color:var(--text3)">—</span>'}</td>
+      <td>${agingBadge}</td>
+      <td style="font-size:12px">${lastFU}</td>
+      <td>${statusBadge}</td>
+      <td style="font-size:11px;color:var(--text2);word-break:break-all">${r.noInv || '<span style="color:var(--text3)">—</span>'}</td>
+      <td>${timeline}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function getAgingBadge(days) {
+  if (days === null) return '<span class="badge b-gray">—</span>';
+  if (days <= 30) return `<span class="badge b-green">&lt;30 hr</span>`;
+  if (days <= 60) return `<span class="badge b-blue">31–60 hr</span>`;
+  if (days <= 90) return `<span class="badge b-orange">61–90 hr</span>`;
+  return `<span class="badge b-red">&gt;90 hr</span>`;
+}
+
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fmtDate(d) {
+  if (!d) return '—';
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = MONTHS_SHORT[d.getMonth()];
+  const yy = String(d.getFullYear()).slice(-2);
+  return `${dd}-${mm}-${yy}`;
+}
+
+// Convert all date patterns inside a text string to dd-Mmm-yy
+function normalizeDatesInText(text) {
+  if (!text) return text;
+  // Replace dd/mm/yyyy or dd/mm/yy
+  let out = text.replace(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/g, (match, d, mo, y) => {
+    if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31) return match;
+    if (y.length === 2) y = '20' + y;
+    const dt = new Date(+y, +mo-1, +d);
+    return isNaN(dt) ? match : fmtDate(dt);
+  });
+  // Replace DDMMYY standalone (e.g. 080426 → 08-Apr-26)
+  out = out.replace(/(?<!\d)([0-3]\d)([01]\d)(\d{2})(?!\d)/g, (match, d, mo, y) => {
+    if (+mo < 1 || +mo > 12 || +d < 1 || +d > 31) return match;
+    const dt = new Date(2000 + +y, +mo-1, +d);
+    if (isNaN(dt) || dt.getFullYear() < 2020) return match;
+    return fmtDate(dt);
+  });
+  return out;
+}
+
+function fmtIDR(n) {
+  if (!n && n !== 0) return '—';
+  return 'Rp ' + Math.round(n).toLocaleString('id-ID');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function switchTab(tab, force=false) {
+  if (currentTab === tab && !force) return;
+  currentTab = tab;
+  document.getElementById('tab-city').classList.toggle('active', tab==='city');
+  document.getElementById('tab-owner').classList.toggle('active', tab==='owner');
+  sortField = 'no'; sortDir = 1;
+  populateFilterOptions();
+  clearFilters();
+}
+
+function resetApp() {
+  allData = { city: [], owner: [] };
+  document.getElementById('upload-section').style.display = 'block';
+  document.getElementById('app-content').style.display = 'none';
+  document.getElementById('file-input').value = '';
+}
+</script>
+</body>
+</html>
