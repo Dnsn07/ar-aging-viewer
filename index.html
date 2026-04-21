@@ -415,6 +415,63 @@
   .stat-modal-meta { font-size: 11px; color: var(--text3); white-space: nowrap; text-align: right; }
   .stat-modal-meta span { display: block; }
 
+  /* SETTINGS MODAL */
+  .settings-btn {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 12px; font-size: 12px; font-family: inherit;
+    color: var(--text2); cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .settings-btn:hover { background: var(--neutral-bg); color: var(--text); }
+  .settings-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.3);
+    z-index: 400; display: flex; align-items: center; justify-content: center; padding: 16px;
+  }
+  .settings-modal {
+    background: var(--surface); border-radius: var(--border-radius-lg);
+    border: 1px solid var(--border); width: 100%; max-width: 500px;
+    box-shadow: var(--shadow-md);
+  }
+  .settings-modal-header {
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .settings-modal-body { padding: 20px; }
+
+  /* SUMMARY TABLE */
+  .summary-section { margin-bottom: 24px; }
+  .summary-section-title {
+    font-size: 11px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.6px;
+    margin-bottom: 10px; padding-left: 2px;
+  }
+  .summary-table-wrap {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+  }
+  .summary-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .summary-table th {
+    background: var(--surface2); padding: 10px 16px;
+    text-align: left; font-size: 11px; font-weight: 600;
+    color: var(--text3); text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  .summary-table th:not(:first-child) { text-align: right; }
+  .summary-table td {
+    padding: 10px 16px; border-bottom: 0.5px solid var(--border);
+    color: var(--text); font-size: 13px;
+  }
+  .summary-table td:not(:first-child) { text-align: right; font-family: 'DM Mono', monospace; font-size: 12px; }
+  .summary-table tr:last-child td { border-bottom: none; }
+  .summary-table tr:hover td { background: var(--surface2); }
+  .summary-table .row-total td {
+    font-weight: 600; background: var(--surface2);
+    border-top: 1px solid var(--border); border-bottom: none;
+  }
+  .summary-table .row-zero td { color: var(--text3); }
+  .summary-bar-wrap { display: flex; gap: 3px; height: 6px; border-radius: 99px; overflow: hidden; margin-top: 4px; }
+  .summary-bar-seg { height: 100%; border-radius: 99px; }
+
   .mode-btn {
     font-family: inherit; font-size: 13px; font-weight: 500;
     padding: 8px 16px; border: 1px solid var(--border);
@@ -446,7 +503,13 @@
     <span class="brand-name">AR Aging Viewer</span>
     <span class="brand-sub">Accounts Receivable Dashboard</span>
   </div>
-  <div class="header-date" id="header-date"></div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="header-date" id="header-date"></div>
+    <button class="settings-btn" onclick="openSettings()">
+      <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </button>
+  </div>
 </header>
 
 <main class="main">
@@ -518,12 +581,16 @@
       <button class="tab" id="tab-owner" onclick="switchTab('owner')">
         Owner Ledger <span class="tab-count" id="count-owner">0</span>
       </button>
+      <button class="tab" id="tab-summary" onclick="switchTab('summary')">
+        Summary
+      </button>
     </div>
 
     <!-- STATS -->
     <div class="stats-grid" id="stats-grid"></div>
 
     <!-- FILTERS -->
+    <div id="filter-bar-wrap">
     <div class="filter-bar">
       <div class="filter-group">
         <label class="filter-label">Unit</label>
@@ -557,8 +624,14 @@
       </div>
       <button class="btn-reset" onclick="clearFilters()">↺ Reset</button>
     </div>
+    </div>
 
     <div class="results-info" id="results-info"></div>
+
+    <!-- SUMMARY PANEL -->
+    <div id="summary-panel" style="display:none;">
+      <div id="summary-content"></div>
+    </div>
 
     <!-- TABLE -->
     <div class="table-wrap">
@@ -585,6 +658,28 @@
 
   </div>
 </main>
+
+<!-- SETTINGS MODAL -->
+<div class="settings-overlay" id="settings-overlay" style="display:none;" onclick="if(event.target===this)closeSettings()">
+  <div class="settings-modal">
+    <div class="settings-modal-header">
+      <div style="font-size:14px;font-weight:600;">Settings</div>
+      <button class="stat-modal-close" onclick="closeSettings()">×</button>
+    </div>
+    <div class="settings-modal-body">
+      <div style="margin-bottom:20px;">
+        <label style="font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px;">Apps Script URL</label>
+        <input type="text" id="settings-url-input"
+          style="width:100%;font-size:13px;padding:8px 12px;border:1px solid var(--border);border-radius:8px;background:var(--surface2);color:var(--text);font-family:inherit;outline:none;margin-bottom:8px;">
+        <div style="font-size:11px;color:var(--text3);">URL disimpan di browser ini. Setelah diubah klik Simpan & Refresh untuk memuat ulang data.</div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button onclick="closeSettings()" style="font-family:inherit;font-size:13px;padding:8px 16px;border:1px solid var(--border);border-radius:8px;background:none;color:var(--text2);cursor:pointer;">Batal</button>
+        <button onclick="saveSettings()" style="font-family:inherit;font-size:13px;font-weight:500;padding:8px 20px;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer;">Simpan & Refresh</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="toast" id="toast"></div>
 
@@ -1218,6 +1313,19 @@ function switchTab(tab, force=false) {
   currentTab = tab;
   document.getElementById('tab-city').classList.toggle('active', tab==='city');
   document.getElementById('tab-owner').classList.toggle('active', tab==='owner');
+  document.getElementById('tab-summary').classList.toggle('active', tab==='summary');
+
+  const isSummary = tab === 'summary';
+  document.getElementById('summary-panel').style.display  = isSummary ? 'block' : 'none';
+  document.getElementById('stats-grid').style.display     = isSummary ? 'none'  : '';
+  document.getElementById('filter-bar-wrap').style.display = isSummary ? 'none' : '';
+  document.getElementById('results-info').style.display   = isSummary ? 'none'  : '';
+  document.querySelector('.table-wrap').style.display     = isSummary ? 'none'  : '';
+
+  if (isSummary) {
+    renderSummary();
+    return;
+  }
   sortField = 'no'; sortDir = 1;
   populateFilterOptions();
   clearFilters();
@@ -1368,6 +1476,145 @@ window.addEventListener('load', () => {
     fetchFromDrive(APPS_SCRIPT_URL);
   }
 });
+// ─── SUMMARY ──────────────────────────────────────────────────────────────────
+function renderSummary() {
+  const city  = allData.city  || [];
+  const owner = allData.owner || [];
+  const today = new Date();
+
+  // Build per-unit aggregation from both sheets
+  const unitMap = {};
+  const addToMap = (rows) => {
+    rows.forEach(r => {
+      if (!r.unit || !r.balance) return;
+      if (!unitMap[r.unit]) unitMap[r.unit] = { total:0, d30:0, d60:0, d90:0, d90p:0 };
+      const u = unitMap[r.unit];
+      u.total += r.balance;
+      const age = r.aging || 0;
+      if      (age <= 30) u.d30  += r.balance;
+      else if (age <= 60) u.d60  += r.balance;
+      else if (age <= 90) u.d90  += r.balance;
+      else                u.d90p += r.balance;
+    });
+  };
+  addToMap(city);
+  addToMap(owner);
+
+  // Sort by total desc, filter out zero rows
+  const units = Object.entries(unitMap)
+    .filter(([,v]) => v.total > 0)
+    .sort((a,b) => b[1].total - a[1].total);
+
+  const grandTotal = { total:0, d30:0, d60:0, d90:0, d90p:0 };
+  units.forEach(([,v]) => {
+    grandTotal.total += v.total;
+    grandTotal.d30   += v.d30;
+    grandTotal.d60   += v.d60;
+    grandTotal.d90   += v.d90;
+    grandTotal.d90p  += v.d90p;
+  });
+
+  const pct = (v, t) => t > 0 ? Math.round(v/t*100) : 0;
+
+  // Build table rows
+  const rowsHtml = units.map(([unit, v]) => {
+    const barHtml = `
+      <div class="summary-bar-wrap">
+        ${v.d30  > 0 ? `<div class="summary-bar-seg" style="flex:${v.d30};background:#3B6D11"></div>`  : ''}
+        ${v.d60  > 0 ? `<div class="summary-bar-seg" style="flex:${v.d60};background:#185FA5"></div>`  : ''}
+        ${v.d90  > 0 ? `<div class="summary-bar-seg" style="flex:${v.d90};background:#854F0B"></div>`  : ''}
+        ${v.d90p > 0 ? `<div class="summary-bar-seg" style="flex:${v.d90p};background:#9B2335"></div>` : ''}
+      </div>`;
+    return `<tr>
+      <td><span class="badge b-blue">${unit}</span>${barHtml}</td>
+      <td style="font-weight:500">${fmtIDR(v.total)}</td>
+      <td style="color:#3B6D11">${v.d30  > 0 ? fmtIDR(v.d30)  : '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="color:#185FA5">${v.d60  > 0 ? fmtIDR(v.d60)  : '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="color:#854F0B">${v.d90  > 0 ? fmtIDR(v.d90)  : '<span style="color:var(--text3)">—</span>'}</td>
+      <td style="color:#9B2335">${v.d90p > 0 ? fmtIDR(v.d90p) : '<span style="color:var(--text3)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  // Grand total cards
+  const cardsHtml = `
+    <div class="stats-grid" style="margin-bottom:20px;">
+      <div class="stat-card">
+        <div class="stat-label">Grand Total Piutang</div>
+        <div class="stat-value accent">${fmtIDR(grandTotal.total)}</div>
+        <div class="stat-sub">${city.length + owner.length} invoice · ${units.length} unit</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label" style="color:#3B6D11">● &lt;30 Hari</div>
+        <div class="stat-value" style="color:#3B6D11">${fmtIDR(grandTotal.d30)}</div>
+        <div class="stat-sub">${pct(grandTotal.d30, grandTotal.total)}% dari total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label" style="color:#185FA5">● 31–60 Hari</div>
+        <div class="stat-value" style="color:#185FA5">${fmtIDR(grandTotal.d60)}</div>
+        <div class="stat-sub">${pct(grandTotal.d60, grandTotal.total)}% dari total</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label" style="color:#9B2335">● &gt;90 Hari</div>
+        <div class="stat-value danger">${fmtIDR(grandTotal.d90p)}</div>
+        <div class="stat-sub">${pct(grandTotal.d90p, grandTotal.total)}% dari total</div>
+      </div>
+    </div>`;
+
+  document.getElementById('summary-content').innerHTML = `
+    ${cardsHtml}
+    <div class="summary-section">
+      <div class="summary-section-title">Grand Total Aging per Unit</div>
+      <div class="summary-table-wrap">
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th style="width:140px">Unit</th>
+              <th>Total</th>
+              <th style="color:#3B6D11">&lt;30 Hari</th>
+              <th style="color:#185FA5">31–60 Hari</th>
+              <th style="color:#854F0B">61–90 Hari</th>
+              <th style="color:#9B2335">&gt;90 Hari</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+            <tr class="row-total">
+              <td>Total</td>
+              <td>${fmtIDR(grandTotal.total)}</td>
+              <td style="color:#3B6D11">${fmtIDR(grandTotal.d30)}</td>
+              <td style="color:#185FA5">${fmtIDR(grandTotal.d60)}</td>
+              <td style="color:#854F0B">${fmtIDR(grandTotal.d90)}</td>
+              <td style="color:#9B2335">${fmtIDR(grandTotal.d90p)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ─── SETTINGS ────────────────────────────────────────────────────────────────
+function openSettings() {
+  const current = scriptUrl || localStorage.getItem('ar_script_url') || APPS_SCRIPT_URL || '';
+  document.getElementById('settings-url-input').value = current;
+  document.getElementById('settings-overlay').style.display = 'flex';
+}
+
+function closeSettings() {
+  document.getElementById('settings-overlay').style.display = 'none';
+}
+
+function saveSettings() {
+  const url = document.getElementById('settings-url-input').value.trim();
+  if (!url || !url.includes('script.google.com')) {
+    showToast('URL tidak valid');
+    return;
+  }
+  scriptUrl = url;
+  localStorage.setItem('ar_script_url', url);
+  closeSettings();
+  showToast('URL disimpan, memuat data...');
+  fetchFromDrive(url);
+}
 </script>
 </body>
 </html>
