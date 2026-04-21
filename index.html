@@ -482,6 +482,19 @@
     75% { transform: translateX(6px); }
   }
 
+  /* AR TURNOVER */
+  .turnover-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; margin-bottom: 24px; }
+  .turnover-note { font-size: 12px; color: var(--text3); background: var(--surface2); border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; line-height: 1.6; }
+  .trend-up   { color: var(--danger); }
+  .trend-down { color: var(--accent); }
+  .trend-flat { color: var(--text3); }
+  .monthly-chart { display: flex; align-items: flex-end; gap: 6px; height: 120px; margin: 16px 0 8px; }
+  .chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .chart-bar { width: 100%; border-radius: 4px 4px 0 0; min-height: 3px; transition: opacity 0.15s; cursor: default; position: relative; }
+  .chart-bar:hover { opacity: 0.8; }
+  .chart-label { font-size: 10px; color: var(--text3); white-space: nowrap; }
+  .chart-val { font-size: 10px; color: var(--text2); font-family: 'DM Mono', monospace; }
+
   /* SUMMARY TABLE */
   .summary-section { margin-bottom: 24px; }
   .summary-section-title {
@@ -646,6 +659,9 @@
       <button class="tab" id="tab-summary" onclick="switchTab('summary')">
         Summary
       </button>
+      <button class="tab" id="tab-turnover" onclick="switchTab('turnover')">
+        Analytics
+      </button>
     </div>
 
     <!-- STATS -->
@@ -693,6 +709,11 @@
     <!-- SUMMARY PANEL -->
     <div id="summary-panel" style="display:none;">
       <div id="summary-content"></div>
+    </div>
+
+    <!-- TURNOVER PANEL -->
+    <div id="turnover-panel" style="display:none;">
+      <div id="turnover-content"></div>
     </div>
 
     <!-- TABLE -->
@@ -1376,18 +1397,18 @@ function switchTab(tab, force=false) {
   document.getElementById('tab-city').classList.toggle('active', tab==='city');
   document.getElementById('tab-owner').classList.toggle('active', tab==='owner');
   document.getElementById('tab-summary').classList.toggle('active', tab==='summary');
+  document.getElementById('tab-turnover').classList.toggle('active', tab==='turnover');
 
-  const isSummary = tab === 'summary';
-  document.getElementById('summary-panel').style.display  = isSummary ? 'block' : 'none';
-  document.getElementById('stats-grid').style.display     = isSummary ? 'none'  : '';
-  document.getElementById('filter-bar-wrap').style.display = isSummary ? 'none' : '';
-  document.getElementById('results-info').style.display   = isSummary ? 'none'  : '';
-  document.querySelector('.table-wrap').style.display     = isSummary ? 'none'  : '';
+  const isSpecial = tab === 'summary' || tab === 'turnover';
+  document.getElementById('summary-panel').style.display   = tab==='summary'   ? 'block' : 'none';
+  document.getElementById('turnover-panel').style.display  = tab==='turnover'  ? 'block' : 'none';
+  document.getElementById('stats-grid').style.display      = isSpecial ? 'none' : '';
+  document.getElementById('filter-bar-wrap').style.display = isSpecial ? 'none' : '';
+  document.getElementById('results-info').style.display    = isSpecial ? 'none' : '';
+  document.querySelector('.table-wrap').style.display      = isSpecial ? 'none' : '';
 
-  if (isSummary) {
-    renderSummary();
-    return;
-  }
+  if (tab === 'summary')  { renderSummary();  return; }
+  if (tab === 'turnover') { renderTurnover(); return; }
   sortField = 'no'; sortDir = 1;
   populateFilterOptions();
   clearFilters();
@@ -1656,7 +1677,7 @@ function renderSummary() {
 
 // ─── PASSWORD ────────────────────────────────────────────────────────────────
 // ⚠️ GANTI PASSWORD DI SINI
-const APP_PASSWORD = 'pbr2026';
+const APP_PASSWORD = 'plataran2024';
 
 function checkPassword() {
   const input = document.getElementById('lock-input');
@@ -1679,6 +1700,204 @@ function checkPassword() {
 // Cek session — kalau sudah login di tab ini, skip password
 if (sessionStorage.getItem('ar_auth') === '1') {
   document.getElementById('lock-screen').style.display = 'none';
+}
+
+// ─── ANALYTICS ────────────────────────────────────────────────────────────────
+function renderTurnover() {
+  const all = [...(allData.city||[]), ...(allData.owner||[])];
+  if (!all.length) { document.getElementById('turnover-content').innerHTML = '<p style="padding:20px;color:var(--text3)">Tidak ada data</p>'; return; }
+  const today = new Date();
+  const todayMs = today.getTime();
+
+  // ── 1. AVERAGE COLLECTION PERIOD ──────────────────────────────────────────
+  const withAge = all.filter(r => r.aging !== null);
+  const avgAge  = withAge.length ? Math.round(withAge.reduce((s,r)=>s+r.aging,0)/withAge.length) : 0;
+  const totalAR = all.reduce((s,r)=>s+r.balance,0);
+  // Weighted avg (by balance)
+  const weightedAvg = totalAR > 0
+    ? Math.round(all.reduce((s,r)=> s + (r.aging||0)*(r.balance||0), 0) / totalAR)
+    : 0;
+  const acpColor = weightedAvg <= 30 ? 'accent' : weightedAvg <= 60 ? '' : 'danger';
+
+  // ── 2. DUE DATE MONITORING ────────────────────────────────────────────────
+  // Parse due date from "Due Date" field — stored as string like "19-Oct-25 (Over 184 Days)"
+  // We already have invoiceDate; due = invoiceDate + 30 days (standard)
+  const dueSoon   = []; // due dalam 7 hari ke depan
+  const overdue   = []; // sudah lewat due date
+  all.forEach(r => {
+    if (!r.invoiceDate) return;
+    const dueDate = new Date(r.invoiceDate.getTime() + 30*24*60*60*1000);
+    const diffDays = Math.floor((dueDate - today) / 86400000);
+    if (diffDays < 0) overdue.push({...r, dueDate, overdueDays: Math.abs(diffDays)});
+    else if (diffDays <= 7) dueSoon.push({...r, dueDate, daysLeft: diffDays});
+  });
+  overdue.sort((a,b)=>b.overdueDays-a.overdueDays);
+  dueSoon.sort((a,b)=>a.daysLeft-b.daysLeft);
+
+  // ── 3. REPEAT OFFENDER (per company) ─────────────────────────────────────
+  const compMap = {};
+  all.forEach(r => {
+    const key = r.company.trim();
+    if (!compMap[key]) compMap[key] = { company:key, unit:r.unit, count:0, totalBalance:0, avgAge:0, ages:[] };
+    compMap[key].count++;
+    compMap[key].totalBalance += r.balance;
+    if (r.aging !== null) compMap[key].ages.push(r.aging);
+  });
+  const companies = Object.values(compMap).map(c => {
+    c.avgAge = c.ages.length ? Math.round(c.ages.reduce((a,b)=>a+b,0)/c.ages.length) : 0;
+    return c;
+  }).filter(c => c.count >= 1)
+    .sort((a,b) => b.avgAge - a.avgAge)
+    .slice(0, 10);
+
+  // ── 4. SALES FOLLOW UP ACTIVITY ──────────────────────────────────────────
+  const salesMap = {};
+  all.forEach(r => {
+    const s = (r.sales||'').trim() || '(Tidak ada)';
+    if (!salesMap[s]) salesMap[s] = { sales:s, invoices:0, totalBalance:0, withFU:0, staleFU:0, lastFUDates:[] };
+    const sm = salesMap[s];
+    sm.invoices++;
+    sm.totalBalance += r.balance;
+    if (r.lastFollowUpDate) {
+      sm.withFU++;
+      sm.lastFUDates.push(r.lastFollowUpDate);
+      const daysSinceFU = Math.floor((today - r.lastFollowUpDate)/86400000);
+      if (daysSinceFU > 14) sm.staleFU++;
+    } else {
+      sm.staleFU++;
+    }
+  });
+  const salesRows = Object.values(salesMap)
+    .sort((a,b)=>b.totalBalance-a.totalBalance);
+
+  // ── BUILD HTML ────────────────────────────────────────────────────────────
+
+  // Section 1: ACP
+  const acpHtml = `
+    <div class="summary-section">
+      <div class="summary-section-title">Average Collection Period</div>
+      <div class="stats-grid" style="margin-bottom:0">
+        <div class="stat-card">
+          <div class="stat-label">Rata-rata Umur Piutang</div>
+          <div class="stat-value ${acpColor}">${weightedAvg} hari</div>
+          <div class="stat-sub">weighted by balance</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Rata-rata Sederhana</div>
+          <div class="stat-value">${avgAge} hari</div>
+          <div class="stat-sub">per invoice</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Invoice >90 Hari</div>
+          <div class="stat-value danger">${all.filter(r=>r.aging>90).length}</div>
+          <div class="stat-sub">${fmtIDR(all.filter(r=>r.aging>90).reduce((s,r)=>s+r.balance,0))}</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Invoice >60 Hari</div>
+          <div class="stat-value warning">${all.filter(r=>r.aging>60).length}</div>
+          <div class="stat-sub">${fmtIDR(all.filter(r=>r.aging>60).reduce((s,r)=>s+r.balance,0))}</div>
+        </div>
+      </div>
+    </div>`;
+
+  // Section 2: Due Date
+  const dueSoonRows = dueSoon.map(r=>`
+    <tr>
+      <td><span class="badge b-blue">${r.unit}</span></td>
+      <td style="font-weight:500">${r.company}</td>
+      <td>${r.noInv||'—'}</td>
+      <td>${fmtIDR(r.balance)}</td>
+      <td><span class="badge b-orange">${r.daysLeft === 0 ? 'Hari ini!' : r.daysLeft + ' hari lagi'}</span></td>
+    </tr>`).join('');
+  const overdueRows = overdue.slice(0,10).map(r=>`
+    <tr>
+      <td><span class="badge b-blue">${r.unit}</span></td>
+      <td style="font-weight:500">${r.company}</td>
+      <td>${r.noInv||'—'}</td>
+      <td>${fmtIDR(r.balance)}</td>
+      <td><span class="badge b-red">Lewat ${r.overdueDays} hari</span></td>
+    </tr>`).join('');
+
+  const dueDateHtml = `
+    <div class="summary-section">
+      <div class="summary-section-title">Due Date — Jatuh Tempo dalam 7 Hari (${dueSoon.length})</div>
+      <div class="summary-table-wrap" style="margin-bottom:16px">
+        <table class="summary-table">
+          <thead><tr><th>Unit</th><th>Perusahaan</th><th>No Invoice</th><th>Balance</th><th>Due</th></tr></thead>
+          <tbody>${dueSoon.length ? dueSoonRows : '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Tidak ada invoice jatuh tempo dalam 7 hari</td></tr>'}</tbody>
+        </table>
+      </div>
+      <div class="summary-section-title">Sudah Lewat Due Date (${overdue.length})</div>
+      <div class="summary-table-wrap">
+        <table class="summary-table">
+          <thead><tr><th>Unit</th><th>Perusahaan</th><th>No Invoice</th><th>Balance</th><th>Status</th></tr></thead>
+          <tbody>${overdue.length ? overdueRows : '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">Tidak ada invoice lewat due date</td></tr>'}</tbody>
+        </table>
+      </div>
+      ${overdue.length > 10 ? `<div style="font-size:12px;color:var(--text3);margin-top:8px;padding-left:2px;">+${overdue.length-10} lainnya tidak ditampilkan</div>` : ''}
+    </div>`;
+
+  // Section 3: Repeat Offender
+  const repeatRows = companies.map(c=>`
+    <tr>
+      <td><span class="badge b-blue">${c.unit}</span></td>
+      <td style="font-weight:500">${c.company}</td>
+      <td style="text-align:center">${c.count}</td>
+      <td>${fmtIDR(c.totalBalance)}</td>
+      <td><span class="badge ${c.avgAge<=30?'b-green':c.avgAge<=60?'b-blue':c.avgAge<=90?'b-orange':'b-red'}">${c.avgAge} hari</span></td>
+    </tr>`).join('');
+
+  const repeatHtml = `
+    <div class="summary-section">
+      <div class="summary-section-title">Perusahaan dengan Piutang Terlama (Top 10)</div>
+      <div class="summary-table-wrap">
+        <table class="summary-table">
+          <thead><tr><th>Unit</th><th>Perusahaan</th><th style="text-align:center">Invoice</th><th>Total Balance</th><th>Avg Umur</th></tr></thead>
+          <tbody>${repeatRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+
+  // Section 4: Sales Activity
+  const salesHtml = `
+    <div class="summary-section">
+      <div class="summary-section-title">Aktivitas Follow Up per Sales</div>
+      <div class="summary-table-wrap">
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>Sales</th>
+              <th style="text-align:center">Invoice</th>
+              <th>Total Balance</th>
+              <th style="text-align:center">Sudah F/U</th>
+              <th style="text-align:center">Perlu F/U Ulang</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${salesRows.map(s=>`
+              <tr>
+                <td style="font-weight:500">${s.sales}</td>
+                <td style="text-align:center">${s.invoices}</td>
+                <td>${fmtIDR(s.totalBalance)}</td>
+                <td style="text-align:center">
+                  <span class="badge b-green">${s.withFU} / ${s.invoices}</span>
+                </td>
+                <td style="text-align:center">
+                  ${s.staleFU > 0
+                    ? `<span class="badge b-red">${s.staleFU}</span>`
+                    : `<span class="badge b-green">0</span>`}
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  document.getElementById('turnover-content').innerHTML =
+    acpHtml + dueDateHtml + repeatRows.length ? repeatHtml + salesHtml : salesHtml;
+
+  // Re-set innerHTML properly
+  document.getElementById('turnover-content').innerHTML = acpHtml + dueDateHtml + repeatHtml + salesHtml;
 }
 
 // ─── SETTINGS ────────────────────────────────────────────────────────────────
